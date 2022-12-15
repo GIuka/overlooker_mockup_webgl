@@ -623,7 +623,7 @@ class AnimationGL {
       counter++;
     }
 
-    for (let i = (userCount - 1) * 4; i <= texArray.length; i++) {
+    for (let i = (userCount - 1) * 4; i <= texArray.length; i += 4) {
       texArray[i + 3] = this.stopAnimationCode;
     }
   }
