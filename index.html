@@ -69,24 +69,20 @@
     return _color;
   }
 
-  // References an animation's start time and duration to a looping timer to get
-  // its normalized progress.
   float mapTime (in float start, in float duration, in float timer) {
-    float end = 0.0;
+    float end = start + duration;
     float progress = 0.0;
-    if (start == 255.0) {
+    float stop_code = 255.0;
+
+    if (start == stop_code) {
       progress = 1.0;
-    } else if (timer < start && start + duration >= 255.0) {
-      // If the animation spans both ends of the animation number line and the
-      // timer has restarted, project the start time backwards by the same
-      // amount that the timer was moved by mod.
-      start = start - 255.0;
-      end = start + duration;
-      progress = clamp((timer - start) / (end - start), 0.0, 1.0);
+    } else if (timer < start) {
+      timer += 255.0;    // Undo % 255 to handle animations that span both ends of timer number line.
+      progress = (timer - start) / (end - start);
     } else {
-      end = start + duration;
-      progress = clamp((timer - start) / (end - start), 0.0, 1.0);
+      progress = (timer - start) / (end - start);
     }
+
     return progress;
   }
 
@@ -118,24 +114,20 @@
   uniform sampler2D u_texture_color;
   varying vec2 v_texcoord;
 
-  // References an animation's start time and duration to a looping timer to get
-  // its normalized progress.
   float mapTime (in float start, in float duration, in float timer) {
-    float end = 0.0;
+    float end = start + duration;
     float progress = 0.0;
-    if (start == 255.0) {
+    float stop_code = 255.0;
+
+    if (start == stop_code) {
       progress = 1.0;
-    } else if (timer < start && start + duration >= 255.0) {
-      // If the animation spans both ends of the animation number line and the
-      // timer has restarted, project the start time backwards by the same
-      // amount that the timer was moved by mod.
-      start = start - 255.0;
-      end = start + duration;
-      progress = clamp((timer - start) / (end - start), 0.0, 1.0);
+    } else if (timer < start) {
+      timer += 255.0;    // Undo % 255 to handle animations that span both ends of timer number line.
+      progress = (timer - start) / (end - start);
     } else {
-      end = start + duration;
-      progress = clamp((timer - start) / (end - start), 0.0, 1.0);
+      progress = (timer - start) / (end - start);
     }
+
     return progress;
   }
 
@@ -160,6 +152,7 @@
     float pulse_progress = mapTime(tex_color.w * 255.0, u_pulse_duration, u_timerloop);
     float pulse_normal = sin(pulse_progress * 3.14159265359);
     vec3 edge_color = clamp(tex_color.rgb + 0.5 * pulse_normal, 0.0, 1.5);
+
     vec3 circle_color = vec3(mix(edge_color, tex_color.rgb, circle_dot(uv, 0.25, 1.0)));
 
     float main_circle = circle_dot(uv, u_gridparams.z * 0.5, u_aafactor);
