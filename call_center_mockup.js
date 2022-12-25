@@ -49,17 +49,17 @@ function setup() {
 
   let tempLayout = "";
   let initBlock = 0;
-  let layout = 0; // Put in the global context if checking values thru console is needed.
+  let layout = 0;
   switch (tempLayout) {
     case "growing":
       initBlock = {
-        ticksPerSecond: 50,
+        ticksPerSecond: 20,
         colorMixDuration: 0.5,
-        pulseDuration: 2.0,
+        pulseDuration: 4.0,
         startingUsers: 100,
         maxUsers: 100000,
         joinPerTick: 1,
-        updateRatio: 0.0,
+        updateRatio: 0.075,
         themeSelection: "RandomHSV",
         dotPadding: 0.15,
         tilingSpanMode: "maxArea",
@@ -71,12 +71,12 @@ function setup() {
       initBlock = {
         ticksPerSecond: 20,
         colorMixDuration: 0.5,
-        pulseDuration: 1,
+        pulseDuration: 4.0,
         startingUsers: 10000,
         maxUsers: 100000,
         joinPerTick: 0,
         updateRatio: 0.075,
-        themeSelection: "",
+        themeSelection: "RandomHSV",
         dotPadding: 0.15,
         tilingSpanMode: "maxArea",
         tickInterval: 25,
@@ -92,18 +92,23 @@ class LayoutUserGrid {
     this.gridMain = new UserGrid(this.userCount, gl.canvas.width, gl.canvas.height, tempInitBlock.dotPadding, tempInitBlock.tilingSpanMode);
     this.userSim = new UserSimulator(this.userCount, tempInitBlock.maxUsers);
     this.texMain = new DataTexture(this.gridMain.parameters.columns, this.gridMain.parameters.rows, tempInitBlock.maxUsers);
-    this.gridAnimations = new AnimationGL(tempInitBlock.ticksPerSecond, tempInitBlock.colorMixDuration, tempInitBlock.pulseDuration, tempInitBlock.maxUsers);
-    uniforms.u_texture_color = this.texMain.colorTexture;
-    uniforms.u_texture_data = this.texMain.dataTexture;
     this.layoutTheme = new ColorTheme(tempInitBlock.themeSelection);
+
+    // Randomize animation start times to reduce pulsing at program start.
+    for (let i = 0; i < this.userCount * 4; i += 4) {
+      this.texMain.texArray[i + 2] = (Math.random() * 255) >> 0;
+      this.texMain.texArray[i + 3] = (Math.random() * 255) >> 0;
+    }
+    this.gridAnimations = new AnimationGL(tempInitBlock.ticksPerSecond, tempInitBlock.colorMixDuration, tempInitBlock.pulseDuration, tempInitBlock.maxUsers);
+
     this.tooltip = document.querySelectorAll('.tooltip');
     this.toolTipIndex = 0;
-
-    // Creates a mousemove listener for the tooltip.
     addEventListener('mousemove', (event) => {
       this.mouseMove(event);
     });
 
+    uniforms.u_texture_color = this.texMain.colorTexture;
+    uniforms.u_texture_data = this.texMain.dataTexture;
     if (typeof uniforms.u_texture_color != 'object' || typeof uniforms.u_texture_color != 'object') {
       throw new Error("u_texture_color and u_texture_data have to be set to a valid WebGL texture before"
         + " the draw loop is started. Try using DataTexture.colorTexture and DataTexture.dataTexture from a DataTexture instance.");
@@ -609,7 +614,7 @@ class AnimationGL {
         texArray[i + 3] = this.stopAnimationCode;
 
         if (VisualAux.randomFast(this.rawTime + counter) > 0.5) {
-          texArray[i + 3] = this.shaderLoop;
+          texArray[i + 3] = this.shaderLoop >> 0;
         }
       }
       counter++;
