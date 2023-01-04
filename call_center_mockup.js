@@ -1,7 +1,7 @@
 "use strict";
 
 const gridCanvas = document.getElementById("cgl");
-const gl = gridCanvas.getContext("webgl", { cull: false, antialias: false });
+const gl = gridCanvas.getContext("webgl", { cull: false, antialias: false, alpha: false });
 const shaderStageTexture = twgl.createProgramInfo(gl, ["vertex_texture", "fragment_texture"]);
 const shaderStageScreen = twgl.createProgramInfo(gl, ["vertex_screen", "fragment_screen"]);
 
@@ -37,7 +37,7 @@ function setup() {
 
   // ticksPerSecond:  Sets the number of animation ticks, valid from 2 to 255.
   // colorMixDuration: The length of the color mixing animation in seconds.
-  // pulseDuration: Not yet implemented.
+  // pulseDuration: The length of the idle brightness pulse animation in seconds.
   // startingUsers: The number of users that the layout will start with or reset to if maxUsers is exceeded.
   // maxUsers: The number of users to allocate memory for. The simulator will reset the grid when this value is exceeded.
   // joinPerTick: The number of users that are allowed to join per tick of the simulator.
@@ -94,8 +94,8 @@ class LayoutUserGrid {
     this.texMain = new DataTexture(this.gridMain.parameters.columns, this.gridMain.parameters.rows, tempInitBlock.maxUsers);
     this.layoutTheme = new ColorTheme(tempInitBlock.themeSelection);
 
-    // Randomize animation start times to reduce pulsing at program start.
-    for (let i = 0; i < this.texMain.texArray.length; i += 4) {
+    // Randomize animation start times to reduce strobing.
+    for (let i = 0; i < this.userCount * 4; i += 4) {
       this.texMain.texArray[i + 2] = (Math.random() * 254) >> 0;
       this.texMain.texArray[i + 3] = (Math.random() * 254) >> 0;
     }
@@ -120,31 +120,21 @@ class LayoutUserGrid {
 
   // Draw loop.
   render = (time) => {
-    this.gridAnimations.updateTimersDrawloopStart(time);
-    this.updateTooltip();
+    gl.clear(gl.COLOR_BUFFER_BIT); // Uses gl.clearColor for empty margins.
 
-    // Checks for a window resize and adjusts the grid + shader dimensions if
-    // necessary.
+    this.gridAnimations.updateTimersDrawloopStart(time);
+
     if (twgl.resizeCanvasToDisplaySize(gl.canvas)) {
       this.gridMain.resize(gl.canvas.width, gl.canvas.height);
       this.texMain.updateTextureDimensions(this.gridMain.parameters.columns, this.gridMain.parameters.rows);
     }
 
-    /*
-    // For debugging bad animation start times.
-    this.currTime = this.gridAnimations.mapTime(this.texMain.texArray[2], this.gridAnimations.colorMixDuration);
-    if (this.lastTime >= 1.0 && this.currTime > 0.02) {
-      console.log(this.currTime)
-    }
-    this.lastTime = this.gridAnimations.mapTime(this.texMain.texArray[2], this.gridAnimations.colorMixDuration);
-    */
-
     // Gets fresh data to the shaders.
     this.updateUniforms();
 
-
     // Only update animations and DataTextures on animation tick.
     if (this.gridAnimations.newTickFlag == 1) {
+      this.updateTooltip();
 
       // Dequeues the newest state changes from userSim and stores them in a state
       // buffer within gridAnimations.
@@ -522,8 +512,8 @@ class DataTexture {
   // Changes the texture dimensions. 
   //
   // Should be called using columns/rows from UserGrid's tiling algorithm; which
-  // calculates the appropriate dimensions to span the div as users
-  // join or the screen dimensions are changes.
+  // calculates the appropriate dimensions to span the canvas as users
+  // join or the screen dimensions are changed.
   //
   // Data is not copied over during resize; the end points of the ArrayBuffer
   // view are moved instead.
@@ -566,7 +556,7 @@ class DataTexture {
 // forever.
 //
 // Control timers record the current time + the animation's duration. If
-// controlTime exceeds this value the animation is over and texArray is updated
+// scaledTime exceeds this value the animation is over and texArray is updated
 // to stop the animation, start the next one, etc.
 
 class AnimationGL {
@@ -681,6 +671,11 @@ class AnimationGL {
     this.newTickFlag = ((prevShaderLoop >> 0) - (this.shaderLoop >> 0)) != 0;
   }
 
+  // Call at the end of the draw loop to get a comparison value for deltaTime.
+  updateTimersDrawloopEnd(time) {
+    this.prevTime = time;
+  }
+
   // DEBUG: Mirrors the fragment shader animation function - helps find timing glitches.
   mapTime(startTime, duration) {
     let progress = 0.0;
@@ -697,11 +692,6 @@ class AnimationGL {
     }
 
     return progress;
-  }
-
-  // Call at the end of the draw loop to get a comparison value for deltaTime.
-  updateTimersDrawloopEnd(time) {
-    this.prevTime = time;
   }
 }
 
@@ -843,6 +833,7 @@ class UserGrid {
 class ColorTheme {
   constructor(tempThemeName) {
     this.theme = this.setColorTheme(tempThemeName);
+    this.setBackgroundColor(this.theme);
   }
 
   // Selects from predefined, user defined, or randomized themes and translates
@@ -884,9 +875,6 @@ class ColorTheme {
         themeArray = [0, 0, 0, 63, 191, 177, 0, 110, 184, 243, 108, 82, 255, 205, 52, 0, 48, 70]; // Theme from the client's slide.
         break;
     }
-
-    document.body.style.backgroundColor = "rgb(" + themeArray[0] + ","
-      + themeArray[1] + "," + themeArray[2] + ")";
 
     // Normalize colors: shader colors have channels that go from 0 to 1.
     for (let i = 0; i < themeArray.length; i++) {
@@ -937,6 +925,12 @@ class ColorTheme {
       + 255 * tempColorArray[1] + "," + 255 * tempColorArray[2] + ");";
 
     return tempColor;
+  }
+
+  setBackgroundColor(tempTheme) {
+    document.body.style.backgroundColor = "rgb(" + 255 * tempTheme[0] + ","
+      + 255 * tempTheme[1] + "," + 255 * tempTheme[2] + ")";
+    gl.clearColor(tempTheme[0], tempTheme[1], tempTheme[2], 0);
   }
 }
 
