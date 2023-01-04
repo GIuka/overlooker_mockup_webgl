@@ -1,7 +1,7 @@
 html {
   display: block;
   height: 100%;
-  overflow:hidden;
+  overflow: hidden;
   padding: 0;
   margin: 0;
 }
@@ -14,26 +14,27 @@ body {
 }
 
 #cgl {
+  display: block;
   width: 100%;
   height: 100%;
 }
 
 .tooltipbody:hover .tooltip {
-    display: block;
+  display: block;
 }
 
 .tooltip {
-    display: none;
-    background: #C8C8C8;
-    margin-left: 28px;
-    padding: 10px;
-    position: absolute;
-    z-index: 1000;
-    width: max-content;
-    max-width: 200px;
-    height: max-content;
+  display: none;
+  background: #C8C8C8;
+  margin-left: 28px;
+  padding: 10px;
+  position: absolute;
+  z-index: 1000;
+  width: max-content;
+  max-width: 200px;
+  height: max-content;
 }
 
 .tooltipbody {
-  margin:0px;
+  margin: 0px;
 }
